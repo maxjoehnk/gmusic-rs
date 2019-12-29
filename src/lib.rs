@@ -1,32 +1,24 @@
-extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-extern crate serde_json;
-extern crate serde_urlencoded;
-extern crate serde_ini;
-#[macro_use]
-extern crate hyper;
-extern crate reqwest;
-extern crate env_logger;
-extern crate log;
-extern crate url;
-extern crate rand;
-extern crate base64;
-extern crate sha1;
-extern crate byteorder;
-extern crate openssl;
+
+use base64;
+use hyper::http::header::{AUTHORIZATION, CONTENT_TYPE};
+use reqwest;
+use serde_ini;
+use serde_json;
+use serde_urlencoded;
+
+use crate::auth_header::GoogleAuth;
+use crate::error::Error;
+use crate::http::get_all_tracks::{GetAllTracksRequest, GetAllTracksResponse, Track};
+use crate::http::login::{LoginRequest, LoginResponse};
+use crate::http::oauth::{OAuthRequest, OAuthResponse};
+use crate::http::settings::{GetSettingsRequest, GetSettingsResponse, Settings};
 
 mod auth;
 mod auth_header;
 mod error;
 mod http;
-
-use auth_header::GoogleAuth;
-use error::Error;
-use http::login::{LoginResponse, LoginRequest};
-use http::oauth::{OAuthRequest, OAuthResponse};
-use http::settings::{GetSettingsRequest, GetSettingsResponse, Settings};
-use http::get_all_tracks::{GetAllTracksRequest, GetAllTracksResponse, Track};
 
 static BASE_URL: &'static str = "https://www.googleapis.com/sj/v1.11/";
 static WEB_URL: &'static str = "https://play.google.com/music/";
@@ -34,9 +26,8 @@ static MOBILE_URL: &'static str = "https://android.clients.google.com/music/";
 static ACCOUNT_URL: &'static str = "https://www.google.com/accounts/";
 static AUTH_URL: &'static str = "https://android.clients.google.com/auth";
 
-header! {
-    (XDeviceId, "X-Device-ID") => [String]
-}
+static FORM_URL_ENCODED: &str = "application/x-www-form-urlencoded";
+static XDEVICE_ID: &str = "X-Device-ID";
 
 #[derive(Debug)]
 pub struct GoogleMusicAPI {
@@ -45,7 +36,7 @@ pub struct GoogleMusicAPI {
     android_id: String,
     master_token: Option<String>,
     auth_token: Option<String>,
-    device_id: Option<String>
+    device_id: Option<String>,
 }
 
 impl GoogleMusicAPI {
@@ -57,7 +48,7 @@ impl GoogleMusicAPI {
             android_id,
             master_token: None,
             auth_token: None,
-            device_id: None
+            device_id: None,
         }
     }
 
@@ -69,7 +60,7 @@ impl GoogleMusicAPI {
             android_id,
             master_token: Some(token),
             auth_token: None,
-            device_id: None
+            device_id: None,
         }
     }
 
@@ -79,7 +70,7 @@ impl GoogleMusicAPI {
         let req = serde_urlencoded::to_string(req).unwrap();
         let mut res = client
             .post(AUTH_URL)
-            .header(reqwest::header::ContentType::form_url_encoded())
+            .header(CONTENT_TYPE, FORM_URL_ENCODED)
             .body(req)
             .send()?;
         if res.status().is_success() {
@@ -95,7 +86,7 @@ impl GoogleMusicAPI {
         let key_1 = base64::decode("VzeC4H4h+T2f0VI180nVX8x+Mb5HiTtGnKgH52Otj8ZCGDz9jRWyHb6QXK0JskSiOgzQfwTY5xgLLSdUSreaLVMsVVWfxfa8Rw==").unwrap();
         let key_2 = base64::decode("ZAPnhUkYwQ6y5DdQxWThbvhJHN8msQ1rqJw0ggKdufQjelrKuiGGJI30aswkgCWTDyHkTGK9ynlqTkJ5L4CiGGUabGeo8M6JTQ==").unwrap();
 
-        let key: Vec<u8> = key_1
+        let _key: Vec<u8> = key_1
             .iter()
             .zip(key_2.iter())
             .map(|(a, b)| a ^ b)
@@ -106,11 +97,11 @@ impl GoogleMusicAPI {
         let req = if self.master_token.is_some() {
             let master_token = self.master_token.clone().unwrap();
             Some(OAuthRequest::from_token(android_id, master_token))
-        }else if self.email.is_some() && self.password.is_some() {
+        } else if self.email.is_some() && self.password.is_some() {
             let email = self.email.clone().unwrap();
             let password = self.password.clone().unwrap();
             Some(OAuthRequest::from_userdata(android_id, email, password))
-        }else {
+        } else {
             None
         };
 
@@ -120,7 +111,7 @@ impl GoogleMusicAPI {
                 let req = serde_urlencoded::to_string(req).unwrap();
                 let mut res = client
                     .post(AUTH_URL)
-                    .header(reqwest::header::ContentType::form_url_encoded())
+                    .header(CONTENT_TYPE, FORM_URL_ENCODED)
                     .body(req)
                     .send()?;
                 if res.status().is_success() {
@@ -130,7 +121,7 @@ impl GoogleMusicAPI {
                     return Ok(());
                 }
                 Err(Error::InvalidLogin)
-            },
+            }
             None => Err(Error::MissingCredentials)
         }
     }
@@ -138,14 +129,12 @@ impl GoogleMusicAPI {
     pub fn get_settings(&self) -> Result<Settings, Error> {
         let client = reqwest::Client::new();
         let req = GetSettingsRequest::new();
-        let req = serde_json::to_string(&req).unwrap();
         let mut res = client
             .post(format!("{}services/fetchsettings?u=0", WEB_URL).as_str())
-            .header(reqwest::header::ContentType::json())
-            .header(reqwest::header::Authorization(GoogleAuth {
+            .json(&req)
+            .header(AUTHORIZATION, GoogleAuth {
                 token: self.master_token.clone().unwrap()
-            }))
-            .body(req)
+            }.to_string())
             .send()?;
         if res.status().is_success() {
             let body = res.text()?;
@@ -158,18 +147,12 @@ impl GoogleMusicAPI {
     pub fn get_all_tracks(&self) -> Result<Vec<Track>, Error> {
         let client = reqwest::Client::new();
         let body = GetAllTracksRequest::new(1000);
-        let body = serde_json::to_string(&body).unwrap();
-        let h = reqwest::header::Authorization(GoogleAuth {
-            token: self.auth_token.clone().unwrap()
-        });
-        println!("{:?}", h);
         let mut res = client
             .post(format!("{}trackfeed", BASE_URL).as_str())
-            .header(reqwest::header::ContentType::json())
-            .header(reqwest::header::Authorization(GoogleAuth {
-                token: self.master_token.clone().unwrap()
-            }))
-            .body(body)
+            .json(&body)
+            .header(AUTHORIZATION, dbg!(GoogleAuth {
+                token: self.auth_token.clone().unwrap()
+            }).to_string())
             .send()?;
         println!("{:?}", res);
         if res.status().is_success() {
@@ -191,7 +174,7 @@ impl GoogleMusicAPI {
         let client = reqwest::Client::new();
         let mut res = client
             .get(format!("{}mplay?={}", MOBILE_URL, query).as_str())
-            .header(XDeviceId(self.device_id.clone().unwrap()))
+            .header(XDEVICE_ID, self.device_id.clone().unwrap())
             .send()?;
 
         if res.status().is_success() {

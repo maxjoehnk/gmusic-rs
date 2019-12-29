@@ -1,4 +1,4 @@
-use auth::encrypt_login;
+use crate::auth::encrypt_login;
 
 #[derive(Debug, Serialize)]
 pub struct LoginRequest {

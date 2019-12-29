@@ -1,17 +1,17 @@
 use rand;
-use rand::Rng;
 use byteorder::{ByteOrder, BigEndian};
 use base64;
 use sha1::Sha1;
-use openssl::rsa::{Rsa, PKCS1_OAEP_PADDING};
+use openssl::rsa::{Rsa, Padding};
 use openssl::bn::BigNum;
+use rand::RngCore;
+use std::convert::TryInto;
 
 static GOOGLE_PUBLIC_KEY: &'static str = "AAAAgMom/1a/v0lblO2Ubrt60J2gcuXSljGFQXgcyZWveWLEwo6prwgi3iJIZdodyhKZQrNWp5nKJ3srRXcUW+F1BD3baEVGcmEgqaLZUNBjm057pKRI16kB0YppeGx5qIQ5QjKzsR8ETQbKLNWgRY0QRNVz34kMJR3P/LgHax/6rmf5AAAAAwEAAQ==";
 
 pub fn create_android_id() -> String {
     let mut bytes = vec![0; 8];
-    let mut rng = rand::OsRng::new().unwrap();
-    rng.fill_bytes(&mut bytes);
+    rand::thread_rng().fill_bytes(&mut bytes);
     bytes
         .iter()
         .map(|byte| format!("{:x}", byte))
@@ -48,8 +48,8 @@ pub fn encrypt_login(email: String, password: String) -> String {
 
     let (modulus, exponent) = decompose(public_key);
     let rsa = Rsa::from_public_components(modulus, exponent).unwrap();
-    let mut encrypted : Vec<u8> = vec![0; rsa.size()];
-    rsa.public_encrypt(data.as_bytes(), &mut encrypted, PKCS1_OAEP_PADDING).unwrap();
+    let mut encrypted : Vec<u8> = vec![0; rsa.size().try_into().unwrap()];
+    rsa.public_encrypt(data.as_bytes(), &mut encrypted, Padding::PKCS1_OAEP).unwrap();
 
     let mut res: Vec<u8> = vec![];
     res.extend(signature.iter());
