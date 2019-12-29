@@ -1,4 +1,19 @@
-pub mod get_all_tracks;
-pub mod login;
-pub mod oauth;
-pub mod settings;
+use serde_derive::{Serialize, Deserialize};
+
+pub mod device_management_info;
+pub mod all_tracks;
+pub mod all_playlists;
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct GMusicResponse<T> {
+    pub data: T,
+    pub kind: String
+}
+
+pub type GMusicListResponse<T> = GMusicResponse<GMusicList<T>>;
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct GMusicList<T> {
+    pub items: Vec<T>
+}
+

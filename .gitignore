@@ -26,3 +26,5 @@ Cargo.lock
 # System Files
 .DS_Store
 Thumbs.db
+
+.google-auth.json
