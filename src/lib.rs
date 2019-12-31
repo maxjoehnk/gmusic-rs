@@ -21,14 +21,14 @@ mod login;
 static BASE_URL: &'static str = "https://mclients.googleapis.com/sj/v2.5/";
 static STREAM_URL: &'static str = "https://mclients.googleapis.com/music/mplay";
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct GoogleMusicApi {
     auth_token: Option<BasicTokenResponse>,
     device_id: Option<String>,
     client: GoogleMusicApiClient
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct GoogleMusicApiClient {
     pub id: String,
     pub secret: String
