@@ -1,6 +1,6 @@
 use std::fs::{read_to_string, write};
 
-use failure::{ensure, Error};
+use failure::{ensure, Error, format_err};
 use oauth2::basic::BasicTokenResponse;
 use oauth2::TokenResponse;
 use reqwest::{header::AUTHORIZATION, Response};
@@ -11,11 +11,15 @@ use crate::http::all_tracks::{GetAllTracksRequest, GetAllTracksResponse, Track};
 use crate::http::device_management_info::{DeviceManagementInfo, GetDeviceManagementInfoResponse};
 use crate::login::perform_oauth;
 use crate::http::all_playlists::{GetAllPlaylistsResponse, GetAllPlaylistsRequest, Playlist};
+use hmac::{Hmac, Mac};
+use sha1::Sha1;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 mod http;
 mod login;
 
 static BASE_URL: &'static str = "https://mclients.googleapis.com/sj/v2.5/";
+static STREAM_URL: &'static str = "https://mclients.googleapis.com/music/mplay";
 
 #[derive(Debug)]
 pub struct GoogleMusicApi {
@@ -88,6 +92,53 @@ impl GoogleMusicApi {
             .await?;
 
         Ok(res.data.items)
+    }
+
+    pub async fn get_stream_url(&self, id: &str, device_id: &str) -> Result<Url, Error> {
+        let client = reqwest::Client::new();
+        let mut url = Url::parse(STREAM_URL)?;
+        let (sig, salt) = GoogleMusicApi::get_signature(id)?;
+        url.query_pairs_mut()
+            .append_pair("dv", "0")
+            .append_pair("hl", "en_US")
+            .append_pair("tier", "aa")
+            .append_pair("opt", "hi")
+            .append_pair("net", "mob")
+            .append_pair("pt", "e")
+            .append_pair("slt", &salt)
+            .append_pair("sig", &sig)
+            .append_pair("songid", id);
+        let res = client
+            .get(url.as_str())
+            .header(AUTHORIZATION, self.get_auth_header())
+            .header("X-Device-ID", device_id)
+            .send()
+            .await?;
+
+        Ok(res.url().clone())
+    }
+
+    fn get_signature(id: &str) -> Result<(String, String), Error> {
+        let key_1 = base64::decode("VzeC4H4h+T2f0VI180nVX8x+Mb5HiTtGnKgH52Otj8ZCGDz9jRWyHb6QXK0JskSiOgzQfwTY5xgLLSdUSreaLVMsVVWfxfa8Rw==")?;
+        let key_2 = base64::decode("ZAPnhUkYwQ6y5DdQxWThbvhJHN8msQ1rqJw0ggKdufQjelrKuiGGJI30aswkgCWTDyHkTGK9ynlqTkJ5L4CiGGUabGeo8M6JTQ==")?;
+
+        let key: Vec<u8> = key_1
+            .iter()
+            .zip(key_2.iter())
+            .map(|(a, b)| a ^ b)
+            .collect();
+
+        let salt = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs_f64() * 1000f64;
+        let salt = salt.floor();
+        let salt = format!("{}", salt);
+
+        let mut mac = Hmac::<Sha1>::new_varkey(&key).map_err(|err| format_err!("Invalid key length {:?}", err))?;
+        mac.input(id.as_bytes());
+        mac.input(salt.as_bytes());
+
+        let signature = base64::encode(&mac.result().code());
+
+        Ok((signature, salt.to_string()))
     }
 
     async fn json_post<Request>(&self, url: &str, body: &Request) -> Result<Response, Error>
