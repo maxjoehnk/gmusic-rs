@@ -46,8 +46,8 @@ impl GoogleMusicApi {
         }
     }
 
-    pub async fn login(&mut self) -> Result<(), Error> {
-        let token = perform_oauth(&self.client).await?;
+    pub fn login(&mut self) -> Result<(), Error> {
+        let token = perform_oauth(&self.client)?;
         self.auth_token = Some(token);
         Ok(())
     }
@@ -67,34 +67,27 @@ impl GoogleMusicApi {
         Ok(())
     }
 
-    pub async fn get_all_tracks(&self) -> Result<Vec<Track>, Error> {
+    pub fn get_all_tracks(&self) -> Result<Vec<Track>, Error> {
         let body = GetAllTracksRequest::new();
-        let res: GetAllTracksResponse = self.json_post(format!("{}trackfeed", BASE_URL).as_str(), &body).await?
-            .json()
-            .await?;
+        let res: GetAllTracksResponse = self.json_post(format!("{}trackfeed", BASE_URL).as_str(), &body)?.json()?;
 
         Ok(res.data.items)
     }
 
-    pub async fn get_all_playlists(&self) -> Result<Vec<Playlist>, Error> {
+    pub fn get_all_playlists(&self) -> Result<Vec<Playlist>, Error> {
         let body = GetAllPlaylistsRequest::new();
-        let res: GetAllPlaylistsResponse = self.json_post(format!("{}playlistfeed", BASE_URL).as_str(), &body).await?
-            .json()
-            .await?;
+        let res: GetAllPlaylistsResponse = self.json_post(format!("{}playlistfeed", BASE_URL).as_str(), &body)?.json()?;
 
         Ok(res.data.items)
     }
 
-    pub async fn get_device_management_info(&self) -> Result<Vec<DeviceManagementInfo>, Error> {
-        let res: GetDeviceManagementInfoResponse = self.json_get(format!("{}devicemanagementinfo", BASE_URL).as_str())
-            .await?
-            .json()
-            .await?;
+    pub fn get_device_management_info(&self) -> Result<Vec<DeviceManagementInfo>, Error> {
+        let res: GetDeviceManagementInfoResponse = self.json_get(format!("{}devicemanagementinfo", BASE_URL).as_str())?.json()?;
 
         Ok(res.data.items)
     }
 
-    pub async fn get_stream_url(&self, id: &str, device_id: &str) -> Result<Url, Error> {
+    pub fn get_stream_url(&self, id: &str, device_id: &str) -> Result<Url, Error> {
         let client = reqwest::Client::new();
         let mut url = Url::parse(STREAM_URL)?;
         let (sig, salt) = GoogleMusicApi::get_signature(id)?;
@@ -112,8 +105,7 @@ impl GoogleMusicApi {
             .get(url.as_str())
             .header(AUTHORIZATION, self.get_auth_header())
             .header("X-Device-ID", device_id)
-            .send()
-            .await?;
+            .send()?;
 
         Ok(res.url().clone())
     }
@@ -141,7 +133,7 @@ impl GoogleMusicApi {
         Ok((signature, salt.to_string()))
     }
 
-    async fn json_post<Request>(&self, url: &str, body: &Request) -> Result<Response, Error>
+    fn json_post<Request>(&self, url: &str, body: &Request) -> Result<Response, Error>
         where Request: Serialize {
         let client = reqwest::Client::new();
         let mut url = Url::parse(url)?;
@@ -153,13 +145,12 @@ impl GoogleMusicApi {
             .post(url.as_str())
             .json(body)
             .header(AUTHORIZATION, self.get_auth_header())
-            .send()
-            .await?;
+            .send()?;
 
         Ok(res)
     }
 
-    async fn json_get(&self, url: &str) -> Result<Response, Error> {
+    fn json_get(&self, url: &str) -> Result<Response, Error> {
         let client = reqwest::Client::new();
         let mut url = Url::parse(url)?;
         url.query_pairs_mut()
@@ -169,8 +160,7 @@ impl GoogleMusicApi {
         let res = client
             .get(url.as_str())
             .header(AUTHORIZATION, self.get_auth_header())
-            .send()
-            .await?;
+            .send()?;
 
         Ok(res)
     }

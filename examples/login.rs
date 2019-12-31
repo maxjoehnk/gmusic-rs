@@ -1,8 +1,7 @@
 mod api;
 
-#[tokio::main]
-async fn main() {
+fn main() {
     let mut api = api::get_api();
-    api.login().await.unwrap();
+    api.login().unwrap();
     api.store_token().unwrap();
 }

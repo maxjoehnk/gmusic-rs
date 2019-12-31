@@ -1,16 +1,16 @@
 use std::io;
 
 use failure::Error;
-use oauth2::{AsyncCodeTokenRequest, AuthorizationCode, AuthUrl, ClientId, ClientSecret, CsrfToken, PkceCodeChallenge, RedirectUrl, Scope, TokenUrl};
+use oauth2::{AuthorizationCode, AuthUrl, ClientId, ClientSecret, CsrfToken, PkceCodeChallenge, RedirectUrl, Scope, TokenUrl};
 use oauth2::basic::{BasicClient, BasicTokenResponse};
-use oauth2::reqwest::async_http_client;
+use oauth2::reqwest::{http_client};
 
 use crate::GoogleMusicApiClient;
 
 static SCOPE: &str = "https://www.googleapis.com/auth/skyjam";
 static REDIRECT_URI: &str = "urn:ietf:wg:oauth:2.0:oob";
 
-pub(crate) async fn perform_oauth(client: &GoogleMusicApiClient) -> Result<BasicTokenResponse, Error> {
+pub(crate) fn perform_oauth(client: &GoogleMusicApiClient) -> Result<BasicTokenResponse, Error> {
     let client = BasicClient::new(
         ClientId::new(client.id.clone()),
         Some(ClientSecret::new(client.secret.clone())),
@@ -38,8 +38,7 @@ pub(crate) async fn perform_oauth(client: &GoogleMusicApiClient) -> Result<Basic
 
     let token = client.exchange_code(code)
         .set_pkce_verifier(pkce_code_verifier)
-        .request_async(async_http_client)
-        .await?;
+        .request(http_client)?;
 
     Ok(token)
 }
