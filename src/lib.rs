@@ -1,19 +1,21 @@
 use std::fs::{read_to_string, write};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use failure::{ensure, Error, format_err};
+use hmac::{Hmac, Mac};
 use oauth2::basic::BasicTokenResponse;
 use oauth2::TokenResponse;
 use reqwest::{header::AUTHORIZATION, Response};
 use serde::Serialize;
+use sha1::Sha1;
 use url::Url;
 
-use crate::http::all_tracks::{GetAllTracksRequest, GetAllTracksResponse, Track};
+use crate::http::all_playlists::{GetAllPlaylistsRequest, GetAllPlaylistsResponse};
+pub use crate::http::all_playlists::{AlbumArtRef, Playlist, PlaylistShareState, PlaylistType};
+use crate::http::all_tracks::{GetAllTracksRequest, GetAllTracksResponse};
+pub use crate::http::all_tracks::Track;
 use crate::http::device_management_info::{DeviceManagementInfo, GetDeviceManagementInfoResponse};
 use crate::login::perform_oauth;
-use crate::http::all_playlists::{GetAllPlaylistsResponse, GetAllPlaylistsRequest, Playlist};
-use hmac::{Hmac, Mac};
-use sha1::Sha1;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 mod http;
 mod login;
@@ -25,13 +27,13 @@ static STREAM_URL: &'static str = "https://mclients.googleapis.com/music/mplay";
 pub struct GoogleMusicApi {
     auth_token: Option<BasicTokenResponse>,
     device_id: Option<String>,
-    client: GoogleMusicApiClient
+    client: GoogleMusicApiClient,
 }
 
 #[derive(Debug, Clone)]
 pub(crate) struct GoogleMusicApiClient {
     pub id: String,
-    pub secret: String
+    pub secret: String,
 }
 
 impl GoogleMusicApi {
@@ -39,7 +41,7 @@ impl GoogleMusicApi {
         GoogleMusicApi {
             client: GoogleMusicApiClient {
                 id: client_id,
-                secret: client_secret
+                secret: client_secret,
             },
             auth_token: None,
             device_id: None,
