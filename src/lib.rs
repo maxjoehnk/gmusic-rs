@@ -1,10 +1,12 @@
 use std::fs::{read_to_string, write};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use failure::{ensure, format_err, Error};
 use hmac::{Hmac, Mac};
 use oauth2::basic::BasicClient;
 use oauth2::{AuthUrl, ClientId, ClientSecret, RedirectUrl, TokenUrl};
-use reqwest::{header::AUTHORIZATION, Response};
+use reqwest::header::HeaderMap;
+use reqwest::{header::AUTHORIZATION, Method, RequestBuilder, Response, StatusCode};
 use sha1::Sha1;
 use url::Url;
 
@@ -17,7 +19,6 @@ use crate::http::playlist_entries::GetPlaylistEntriesResponse;
 pub use crate::http::playlist_entries::PlaylistEntry;
 use crate::login::perform_oauth;
 use crate::token::AuthToken;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 mod http;
 mod login;
@@ -86,33 +87,34 @@ impl GoogleMusicApi {
 
     pub fn get_all_tracks(&self) -> Result<Vec<Track>, Error> {
         let body = GetAllTracksRequest::new();
-        let res: GetAllTracksResponse = self
-            .json_post(format!("{}trackfeed", BASE_URL).as_str(), &body)?
-            .json()?;
+        let url = format!("{}trackfeed", BASE_URL);
+        let res: GetAllTracksResponse =
+            self.api_post(&url, &body, Vec::new(), Vec::new())?.json()?;
 
         Ok(res.data.items)
     }
 
     pub fn get_all_playlists(&self) -> Result<Vec<Playlist>, Error> {
         let body = GetAllPlaylistsRequest::new();
-        let res: GetAllPlaylistsResponse = self
-            .json_post(format!("{}playlistfeed", BASE_URL).as_str(), &body)?
-            .json()?;
+        let url = format!("{}playlistfeed", BASE_URL);
+        let res: GetAllPlaylistsResponse =
+            self.api_post(&url, &body, Vec::new(), Vec::new())?.json()?;
 
         Ok(res.data.items)
     }
 
     pub fn get_device_management_info(&self) -> Result<Vec<DeviceManagementInfo>, Error> {
-        let res: GetDeviceManagementInfoResponse = self
-            .json_get(format!("{}devicemanagementinfo", BASE_URL).as_str())?
-            .json()?;
+        let url = format!("{}devicemanagementinfo", BASE_URL);
+        let res: GetDeviceManagementInfoResponse =
+            self.api_get(&url, Vec::new(), Vec::new())?.json()?;
 
         Ok(res.data.items)
     }
 
     pub fn get_playlist_entries(&self) -> Result<Vec<PlaylistEntry>, Error> {
         let url = format!("{}plentryfeed", BASE_URL);
-        let mut res: GetPlaylistEntriesResponse = self.json_post(&url, &())?.json()?;
+        let mut res: GetPlaylistEntriesResponse =
+            self.api_post(&url, &(), Vec::new(), Vec::new())?.json()?;
 
         for entry in &mut res.data.items {
             if let Some(mut track) = entry.track.as_mut() {
@@ -124,24 +126,17 @@ impl GoogleMusicApi {
     }
 
     pub fn get_stream_url(&self, id: &str, device_id: &str) -> Result<Url, Error> {
-        let client = reqwest::Client::new();
-        let mut url = Url::parse(STREAM_URL)?;
         let (sig, salt) = GoogleMusicApi::get_signature(id)?;
-        url.query_pairs_mut()
-            .append_pair("dv", "0")
-            .append_pair("hl", "en_US")
-            .append_pair("tier", "aa")
-            .append_pair("opt", "hi")
-            .append_pair("net", "mob")
-            .append_pair("pt", "e")
-            .append_pair("slt", &salt)
-            .append_pair("sig", &sig)
-            .append_pair("songid", id);
-        let res = client
-            .get(url.as_str())
-            .header(AUTHORIZATION, self.auth_token.get_auth_header()?)
-            .header("X-Device-ID", device_id)
-            .send()?;
+        let params = vec![
+            ("opt", "hi"),
+            ("net", "mob"),
+            ("pt", "e"),
+            ("slt", &salt),
+            ("sig", &sig),
+            ("songid", id),
+        ];
+        let headers = vec![("X-Device-ID", device_id)];
+        let res = self.api_get(STREAM_URL, headers, params)?;
 
         Ok(res.url().clone())
     }
@@ -166,45 +161,87 @@ impl GoogleMusicApi {
         Ok((signature, salt.to_string()))
     }
 
-    fn json_post<Request>(&self, url: &str, body: &Request) -> Result<Response, Error>
+    fn api_get(
+        &self,
+        url: &str,
+        headers: Vec<(&'static str, &str)>,
+        params: Vec<(&str, &str)>,
+    ) -> Result<Response, Error> {
+        self.request::<()>(url, Method::GET, None, headers, params)
+    }
+
+    fn api_post<B>(
+        &self,
+        url: &str,
+        body: &B,
+        headers: Vec<(&'static str, &str)>,
+        params: Vec<(&str, &str)>,
+    ) -> Result<Response, Error>
     where
-        Request: serde::Serialize,
+        B: serde::Serialize,
+    {
+        self.request(url, Method::POST, Some(body), headers, params)
+    }
+
+    fn request<B>(
+        &self,
+        url: &str,
+        method: Method,
+        body: Option<&B>,
+        headers: Vec<(&'static str, &str)>,
+        params: Vec<(&str, &str)>,
+    ) -> Result<Response, Error>
+    where
+        B: serde::Serialize,
     {
         if self.auth_token.requires_new_token() {
             self.auth_token.refresh(&self.client.oauth_client)?;
         }
         let client = reqwest::Client::new();
         let mut url = Url::parse(url)?;
-        url.query_pairs_mut()
-            .append_pair("dv", "0")
-            .append_pair("hl", "en_US")
-            .append_pair("tier", "aa");
-        let res = client
-            .post(url.as_str())
-            .json(body)
+        {
+            let mut query_pairs = url.query_pairs_mut();
+            for (key, value) in GoogleMusicApi::default_params() {
+                query_pairs.append_pair(key, value);
+            }
+            for (key, value) in params {
+                query_pairs.append_pair(key, value);
+            }
+        }
+        let mut req = client.request(method, url);
+        let mut header_map = HeaderMap::new();
+        for (key, value) in headers {
+            header_map.insert(key, value.parse()?);
+        }
+        req = req.headers(header_map);
+        if let Some(body) = body {
+            req = req.json(&body);
+        }
+        let res = req
+            .try_clone()
+            .unwrap()
             .header(AUTHORIZATION, self.auth_token.get_auth_header()?)
             .send()?
-            .error_for_status()?;
+            .error_for_status()
+            .or_else(|err| self.retry_request(req, err))?;
 
         Ok(res)
     }
 
-    fn json_get(&self, url: &str) -> Result<Response, Error> {
-        if self.auth_token.requires_new_token() {
+    fn retry_request(&self, req: RequestBuilder, err: reqwest::Error) -> Result<Response, Error> {
+        if let Some(StatusCode::UNAUTHORIZED) = err.status() {
             self.auth_token.refresh(&self.client.oauth_client)?;
+            let res = req
+                .header(AUTHORIZATION, self.auth_token.get_auth_header()?)
+                .send()?
+                .error_for_status()?;
+            Ok(res)
+        } else {
+            Err(err.into())
         }
-        let client = reqwest::Client::new();
-        let mut url = Url::parse(url)?;
-        url.query_pairs_mut()
-            .append_pair("dv", "0")
-            .append_pair("hl", "en_US")
-            .append_pair("tier", "aa");
-        let res = client
-            .get(url.as_str())
-            .header(AUTHORIZATION, self.auth_token.get_auth_header()?)
-            .send()?
-            .error_for_status()?;
+    }
 
-        Ok(res)
+    fn default_params() -> Vec<(&'static str, &'static str)> {
+        vec![("dv", "0"), ("hl", "en_US"), ("tier", "aa")]
     }
 }
