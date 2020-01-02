@@ -77,7 +77,7 @@ impl GoogleMusicApi {
         Ok(())
     }
 
-    pub fn load_token(&mut self) -> Result<(), Error> {
+    pub fn load_token(&self) -> Result<(), Error> {
         let token = read_to_string(".google-auth.json")?;
         let token = serde_json::from_str(&token)?;
         self.auth_token.set_token(token);
