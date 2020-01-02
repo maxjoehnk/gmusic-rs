@@ -1,8 +1,19 @@
 [package]
 name = "gmusic"
+description = "An unofficial client library for Google Music"
 version = "0.1.0"
 authors = ["Max Jöhnk <maxjoehnk@gmail.com>"]
 edition = "2018"
+repository = "github.com/maxjoehnk/gmusic-rs"
+readme = "README.md"
+keywords = ["google-music"]
+categories = ["api-bindings"]
+license = "GPL-3.0"
+
+[badges]
+travis-ci = { repository = "maxjoehnk/gmusic-rs", branch = "master" }
+is-it-maintained-issue-resolution = { repository = "maxjoehnk/gmusic-rs" }
+is-it-maintained-open-issues = { repository = "maxjoehnk/gmusic-rs" }
 
 [dependencies]
 log = "0.4"
