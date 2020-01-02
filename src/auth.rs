@@ -7,7 +7,25 @@ use oauth2::{AuthorizationCode, CsrfToken, PkceCodeChallenge, Scope};
 
 static SCOPE: &str = "https://www.googleapis.com/auth/skyjam";
 
-pub(crate) fn perform_oauth(client: &BasicClient) -> Result<BasicTokenResponse, Error> {
+/**
+ * Prints the authorize url to stdout and waits for the authorization code from stdin
+ */
+pub fn stdio_login(url: String) -> String {
+    println!("Open this URL in your browser:\n{}\n", url);
+
+    let mut code = String::new();
+    io::stdin().read_line(&mut code).unwrap();
+
+    code
+}
+
+pub(crate) fn perform_oauth<H>(
+    client: &BasicClient,
+    handler: H,
+) -> Result<BasicTokenResponse, Error>
+where
+    H: Fn(String) -> String,
+{
     let (pkce_code_challenge, pkce_code_verifier) = PkceCodeChallenge::new_random_sha256();
 
     let (authorize_url, _) = client
@@ -16,14 +34,7 @@ pub(crate) fn perform_oauth(client: &BasicClient) -> Result<BasicTokenResponse, 
         .set_pkce_challenge(pkce_code_challenge)
         .url();
 
-    println!(
-        "Open this URL in your browser:\n{}\n",
-        authorize_url.to_string()
-    );
-
-    let mut code = String::new();
-    io::stdin().read_line(&mut code)?;
-
+    let code = handler(authorize_url.to_string());
     let code = AuthorizationCode::new(code);
 
     let token = client

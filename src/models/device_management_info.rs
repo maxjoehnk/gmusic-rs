@@ -1,6 +1,6 @@
 use serde_derive::Deserialize;
 
-use crate::http::GMusicListResponse;
+use crate::models::GMusicListResponse;
 
 pub type GetDeviceManagementInfoResponse = GMusicListResponse<DeviceManagementInfo>;
 

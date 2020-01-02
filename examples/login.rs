@@ -1,4 +1,4 @@
-use gmusic::GoogleMusicApi;
+use gmusic::{auth::stdio_login, GoogleMusicApi};
 
 fn main() {
     env_logger::init();
@@ -7,6 +7,6 @@ fn main() {
 
     let api = GoogleMusicApi::new(client_id, client_secret).unwrap();
 
-    api.login().unwrap();
+    api.login(stdio_login).unwrap();
     api.store_token().unwrap();
 }

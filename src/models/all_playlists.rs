@@ -1,7 +1,7 @@
 use serde_derive::{Deserialize, Serialize};
 
-use crate::http::image_ref::ImageRef;
-use crate::http::GMusicListResponse;
+use crate::models::image_ref::ImageRef;
+use crate::models::GMusicListResponse;
 
 #[derive(Debug, Serialize)]
 pub struct GetAllPlaylistsRequest;

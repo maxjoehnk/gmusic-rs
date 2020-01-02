@@ -1,6 +1,6 @@
 use serde_derive::{Deserialize, Serialize};
 
-use crate::http::GMusicListResponse;
+use crate::models::GMusicListResponse;
 use crate::Track;
 
 pub type GetPlaylistEntriesResponse = GMusicListResponse<PlaylistEntry>;
