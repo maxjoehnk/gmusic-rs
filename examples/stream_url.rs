@@ -1,6 +1,7 @@
 use gmusic::GoogleMusicApi;
 
 fn main() {
+    env_logger::init();
     let client_id = std::env::var("CLIENT_ID").expect("missing client id");
     let client_secret = std::env::var("CLIENT_SECRET").expect("missing client secret");
 
