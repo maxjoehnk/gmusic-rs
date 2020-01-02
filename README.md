@@ -1,4 +1,8 @@
 # gmusic-rs
+
+[![https://docs.rs/gmusic](https://docs.rs/gmusic/badge.svg)](https://docs.rs/gmusic)
+[![Build Status](https://travis-ci.com/maxjoehnk/gmusic-rs.svg?branch=master)](https://travis-ci.com/maxjoehnk/gmusic-rs)
+
 An unofficial client library for Google Music.
 
 Port of [gmusicapi](https://github.com/simon-weber/gmusicapi).
