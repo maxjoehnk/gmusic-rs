@@ -11,11 +11,13 @@ use sha1::Sha1;
 use url::Url;
 
 use crate::http::all_playlists::{GetAllPlaylistsRequest, GetAllPlaylistsResponse};
-pub use crate::http::all_playlists::{AlbumArtRef, Playlist, PlaylistShareState, PlaylistType};
+pub use crate::http::all_playlists::{Playlist, PlaylistShareState, PlaylistType};
 use crate::http::all_tracks::{GetAllTracksRequest, GetAllTracksResponse};
 pub use crate::http::all_tracks::Track;
+pub use crate::http::playlist_entries::PlaylistEntry;
 use crate::http::device_management_info::{DeviceManagementInfo, GetDeviceManagementInfoResponse};
 use crate::login::perform_oauth;
+use crate::http::playlist_entries::GetPlaylistEntriesResponse;
 
 mod http;
 mod login;
@@ -85,6 +87,19 @@ impl GoogleMusicApi {
 
     pub fn get_device_management_info(&self) -> Result<Vec<DeviceManagementInfo>, Error> {
         let res: GetDeviceManagementInfoResponse = self.json_get(format!("{}devicemanagementinfo", BASE_URL).as_str())?.json()?;
+
+        Ok(res.data.items)
+    }
+
+    pub fn get_playlist_entries(&self) -> Result<Vec<PlaylistEntry>, Error> {
+        let url = format!("{}plentryfeed", BASE_URL);
+        let mut res: GetPlaylistEntriesResponse = self.json_post(&url, &())?.json()?;
+
+        for entry in &mut res.data.items {
+            if let Some(mut track) = entry.track.as_mut() {
+                track.id = entry.track_id.clone()
+            }
+        }
 
         Ok(res.data.items)
     }

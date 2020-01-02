@@ -1,6 +1,7 @@
 use serde_derive::{Deserialize, Serialize};
 
 use crate::http::GMusicListResponse;
+use crate::http::image_ref::ImageRef;
 
 #[derive(Debug, Serialize)]
 pub struct GetAllPlaylistsRequest;
@@ -24,7 +25,7 @@ pub struct Playlist {
     pub share_state: Option<PlaylistShareState>,
     pub creation_timestamp: Option<String>,
     #[serde(default)]
-    pub album_art_ref: Vec<AlbumArtRef>,
+    pub album_art_ref: Vec<ImageRef>,
     pub description: Option<String>,
     pub explicit_type: Option<String>,
     pub content_type: Option<String>,
@@ -43,11 +44,6 @@ pub enum PlaylistType {
 pub enum PlaylistShareState {
     Private,
     Public,
-}
-
-#[derive(Debug, Deserialize, Clone)]
-pub struct AlbumArtRef {
-    url: String
 }
 
 impl GetAllPlaylistsRequest {
