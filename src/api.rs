@@ -21,6 +21,7 @@ use crate::models::device_management_info::{
 use crate::models::playlist_entries::GetPlaylistEntriesResponse;
 use crate::models::playlist_entries::PlaylistEntry;
 use crate::token::AuthToken;
+use crate::models::GMusicResponse;
 
 static BASE_URL: &str = "https://mclients.googleapis.com/sj/v2.5/";
 static STREAM_URL: &str = "https://mclients.googleapis.com/music/mplay";
@@ -163,6 +164,15 @@ impl GoogleMusicApi {
         Ok(res.data.items)
     }
 
+    pub fn get_store_track(&self, track_id: &str) -> Result<Track, Error> {
+        ensure!(track_id.starts_with("T"), "track_id is not a store id");
+        let params = vec![("alt", "json"), ("nid", track_id)];
+        let url = format!("{}fetchtrack", BASE_URL);
+        let track: Track = self.api_get(&url, Vec::new(), params)?.json()?;
+
+        Ok(track)
+    }
+
     /**
      * Get a stream url for the given track id with the given device id
      *
@@ -170,14 +180,18 @@ impl GoogleMusicApi {
      */
     pub fn get_stream_url(&self, id: &str, device_id: &str) -> Result<Url, Error> {
         let (sig, salt) = GoogleMusicApi::get_signature(id)?;
-        let params = vec![
+        let mut params = vec![
             ("opt", "hi"),
             ("net", "mob"),
             ("pt", "e"),
             ("slt", &salt),
             ("sig", &sig),
-            ("songid", id),
         ];
+        if id.starts_with("T") {
+            params.push(("mjck", id));
+        }else {
+            params.push(("songid", id));
+        }
         let headers = vec![("X-Device-ID", device_id)];
         let res = self.api_get(STREAM_URL, headers, params)?;
 
