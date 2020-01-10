@@ -57,7 +57,7 @@ impl AuthToken {
                 .as_ref()
                 .ok_or_else(|| format_err!("Not logged in"))?
                 .refresh_token()
-                .unwrap();
+                .ok_or_else(|| format_err!("No refresh token"))?;
 
             client
                 .exchange_refresh_token(refresh_token)
