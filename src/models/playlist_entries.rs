@@ -21,3 +21,10 @@ pub struct PlaylistEntry {
     #[serde(default)]
     pub track: Option<Track>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "kebab-case")]
+pub struct GetPlaylistEntriesRequest {
+    pub start_token: Option<String>,
+    pub max_results: Option<String>
+}

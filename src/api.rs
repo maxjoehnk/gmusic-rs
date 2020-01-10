@@ -18,7 +18,7 @@ use crate::models::all_tracks::{GetAllTracksRequest, GetAllTracksResponse};
 use crate::models::device_management_info::{
     DeviceManagementInfo, GetDeviceManagementInfoResponse,
 };
-use crate::models::playlist_entries::GetPlaylistEntriesResponse;
+use crate::models::playlist_entries::{GetPlaylistEntriesResponse, GetPlaylistEntriesRequest};
 use crate::models::playlist_entries::PlaylistEntry;
 use crate::token::AuthToken;
 use crate::models::GMusicResponse;
@@ -149,11 +149,30 @@ impl GoogleMusicApi {
     /**
      * Returns the tracks used in all user created playlists
      */
-    // TODO: paging
     pub fn get_playlist_entries(&self) -> Result<Vec<PlaylistEntry>, Error> {
+        let mut items = Vec::new();
+
+        let mut res = self.get_playlist_entries_page(None)?;
+        items.append(&mut res.data.items);
+
+        let mut next_page_token = res.next_page_token;
+        while next_page_token.is_some() {
+            let mut res = self.get_playlist_entries_page(next_page_token)?;
+            items.append(&mut res.data.items);
+            next_page_token = res.next_page_token;
+        }
+
+        Ok(items)
+    }
+
+    fn get_playlist_entries_page(&self, page: Option<String>) -> Result<GetPlaylistEntriesResponse, Error> {
         let url = format!("{}plentryfeed", BASE_URL);
+        let request = GetPlaylistEntriesRequest {
+            max_results: Some(String::from("20000")),
+            start_token: page
+        };
         let mut res: GetPlaylistEntriesResponse =
-            self.api_post(&url, &(), Vec::new(), Vec::new())?.json()?;
+            self.api_post(&url, &request, Vec::new(), Vec::new())?.json()?;
 
         for entry in &mut res.data.items {
             if let Some(mut track) = entry.track.as_mut() {
@@ -161,7 +180,7 @@ impl GoogleMusicApi {
             }
         }
 
-        Ok(res.data.items)
+        Ok(res)
     }
 
     pub fn get_store_track(&self, track_id: &str) -> Result<Track, Error> {
