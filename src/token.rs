@@ -64,9 +64,22 @@ impl AuthToken {
                 .request(http_client)
         }?;
 
-        self.set_token(token);
+        self.set_access_token(token);
 
         Ok(())
+    }
+
+    fn set_access_token(&self, new_token: BasicTokenResponse) {
+        let mut token = self.token.lock().unwrap();
+        if let Some(token) = token.as_mut() {
+            token.set_access_token(new_token.access_token().clone());
+            let mut expired_at = self.expired_at.lock().unwrap();
+            *expired_at = Instant::now()
+                + new_token
+                .expires_in()
+                .unwrap_or_else(|| Duration::new(0, 0));
+            self.has_token.store(true, Ordering::Relaxed);
+        }
     }
 
     pub(crate) fn get_auth_header(&self) -> Result<String, Error> {
