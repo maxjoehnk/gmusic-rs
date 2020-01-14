@@ -20,8 +20,8 @@ use crate::models::device_management_info::{
 };
 use crate::models::playlist_entries::{GetPlaylistEntriesResponse, GetPlaylistEntriesRequest};
 use crate::models::playlist_entries::PlaylistEntry;
+use crate::models::search_results::{SearchResultResponse, SearchResultCluster};
 use crate::token::AuthToken;
-use crate::models::GMusicResponse;
 
 static BASE_URL: &str = "https://mclients.googleapis.com/sj/v2.5/";
 static STREAM_URL: &str = "https://mclients.googleapis.com/music/mplay";
@@ -235,6 +235,22 @@ impl GoogleMusicApi {
         let signature = base64::encode(&mac.result().code());
 
         Ok((signature, salt.to_string()))
+    }
+
+    pub fn search(&self, query: &str, max_results: Option<u64>) -> Result<Vec<SearchResultCluster>, Error> {
+        let url = format!("{}query", BASE_URL);
+        let max_results = max_results.unwrap_or(50);
+        let max_results = format!("{}", max_results);
+        let params = vec![
+            ("ct", "1,2,3,4,5,6,7,8,9"),
+            ("ic", "true"),
+            ("q", query),
+            ("max-results", &max_results)
+        ];
+        let res: SearchResultResponse = self.api_get(&url, Vec::new(), params)?
+            .json()?;
+
+        Ok(res.cluster_detail)
     }
 
     fn api_get(

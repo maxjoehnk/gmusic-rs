@@ -1,0 +1,41 @@
+use crate::{Track, Playlist};
+use serde_derive::Deserialize;
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchResultResponse {
+    pub kind: String,
+    pub cluster_detail: Vec<SearchResultCluster>,
+    pub suggested_query: Option<String>
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchResultCluster {
+    pub cluster: SearchResultClusterInfo,
+    pub display_name: String,
+    pub entries: Vec<SearchResult>,
+    pub result_token: Option<String>
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchResultClusterInfo {
+    pub category: String,
+    pub id: String,
+    #[serde(rename = "type")]
+    pub cluster_type: String
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct SearchResult {
+    pub score: f64,
+    #[serde(rename = "type")]
+    pub result_type: String,
+    pub best_result: bool,
+    pub navigational_result: bool,
+    pub navigational_confidence: f64,
+    pub cluster: Vec<SearchResultClusterInfo>,
+    pub track: Option<Track>,
+    pub playlist: Option<Playlist>
+}

@@ -5,6 +5,7 @@ pub mod all_tracks;
 pub mod device_management_info;
 pub mod image_ref;
 pub mod playlist_entries;
+pub mod search_results;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
