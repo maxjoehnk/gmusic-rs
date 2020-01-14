@@ -1,4 +1,3 @@
-use crate::models::GMusicResponse;
 use crate::Track;
 use serde_derive::Deserialize;
 

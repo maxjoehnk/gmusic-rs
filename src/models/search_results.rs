@@ -35,8 +35,8 @@ pub struct SearchResult {
     pub score: Option<f64>,
     #[serde(rename = "type")]
     pub result_type: String,
-    pub best_result: bool,
-    pub navigational_result: bool,
+    pub best_result: Option<bool>,
+    pub navigational_result: Option<bool>,
     pub navigational_confidence: Option<f64>,
     pub cluster: Vec<SearchResultClusterInfo>,
     pub track: Option<Track>,

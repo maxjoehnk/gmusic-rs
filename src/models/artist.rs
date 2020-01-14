@@ -1,4 +1,3 @@
-use crate::models::GMusicResponse;
 use crate::Track;
 use serde_derive::Deserialize;
 use crate::models::album::Album;
@@ -13,7 +12,7 @@ pub struct Artist {
     pub name: String,
     pub artist_art_ref: Option<String>,
     pub artist_art_refs: Vec<ImageRef>,
-    pub artist_bio: String,
+    pub artist_bio: Option<String>,
     #[serde(default)]
     pub albums: Vec<Album>,
     #[serde(default)]
