@@ -11,6 +11,7 @@ pub type GetAllPlaylistsResponse = GMusicListResponse<Playlist>;
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Playlist {
+    #[serde(default)]
     pub id: String,
     pub name: String,
     pub deleted: Option<bool>,

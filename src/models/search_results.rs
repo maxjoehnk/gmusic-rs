@@ -13,7 +13,8 @@ pub struct SearchResultResponse {
 #[serde(rename_all = "camelCase")]
 pub struct SearchResultCluster {
     pub cluster: SearchResultClusterInfo,
-    pub display_name: String,
+    pub display_name: Option<String>,
+    #[serde(default)]
     pub entries: Vec<SearchResult>,
     pub result_token: Option<String>
 }
@@ -29,12 +30,12 @@ pub struct SearchResultClusterInfo {
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct SearchResult {
-    pub score: f64,
+    pub score: Option<f64>,
     #[serde(rename = "type")]
     pub result_type: String,
     pub best_result: bool,
     pub navigational_result: bool,
-    pub navigational_confidence: f64,
+    pub navigational_confidence: Option<f64>,
     pub cluster: Vec<SearchResultClusterInfo>,
     pub track: Option<Track>,
     pub playlist: Option<Playlist>
