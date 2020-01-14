@@ -6,17 +6,17 @@ use serde_derive::Deserialize;
 #[serde(rename_all = "camelCase")]
 pub struct Album {
     #[serde(rename = "albumId")]
-    id: String,
-    kind: String,
-    name: String,
-    album_artist: String,
-    album_art_ref: Option<String>,
-    artist: String,
-    artist_id: Vec<String>,
-    year: Option<u64>,
+    pub id: String,
+    pub kind: String,
+    pub name: String,
+    pub album_artist: String,
+    pub album_art_ref: Option<String>,
+    pub artist: String,
+    pub artist_id: Vec<String>,
+    pub year: Option<u64>,
     #[serde(default)]
-    tracks: Vec<Track>,
-    description: Option<String>,
-    explicit_type: String,
-    content_type: Option<String>
+    pub tracks: Vec<Track>,
+    pub description: Option<String>,
+    pub explicit_type: String,
+    pub content_type: Option<String>
 }

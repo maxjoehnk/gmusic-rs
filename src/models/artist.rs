@@ -8,16 +8,16 @@ use crate::models::image_ref::ImageRef;
 #[serde(rename_all = "camelCase")]
 pub struct Artist {
     #[serde(rename = "artistId")]
-    id: String,
-    kind: String,
-    name: String,
-    artist_art_ref: Option<String>,
-    artist_art_refs: Vec<ImageRef>,
-    artist_bio: String,
+    pub id: String,
+    pub kind: String,
+    pub name: String,
+    pub artist_art_ref: Option<String>,
+    pub artist_art_refs: Vec<ImageRef>,
+    pub artist_bio: String,
     #[serde(default)]
-    albums: Vec<Album>,
+    pub albums: Vec<Album>,
     #[serde(default)]
-    top_tracks: Vec<Track>,
+    pub top_tracks: Vec<Track>,
     #[serde(rename = "total_albums")]
-    total_albums: Option<u64>,
+    pub total_albums: Option<u64>,
 }
