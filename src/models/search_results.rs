@@ -1,5 +1,7 @@
 use crate::{Track, Playlist};
 use serde_derive::Deserialize;
+use crate::models::artist::Artist;
+use crate::models::album::Album;
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -38,5 +40,7 @@ pub struct SearchResult {
     pub navigational_confidence: Option<f64>,
     pub cluster: Vec<SearchResultClusterInfo>,
     pub track: Option<Track>,
-    pub playlist: Option<Playlist>
+    pub playlist: Option<Playlist>,
+    pub artist: Option<Artist>,
+    pub album: Option<Album>
 }

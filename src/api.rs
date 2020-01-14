@@ -22,6 +22,8 @@ use crate::models::playlist_entries::{GetPlaylistEntriesResponse, GetPlaylistEnt
 use crate::models::playlist_entries::PlaylistEntry;
 use crate::models::search_results::{SearchResultResponse, SearchResultCluster};
 use crate::token::AuthToken;
+use crate::models::album::Album;
+use crate::models::artist::Artist;
 
 static BASE_URL: &str = "https://mclients.googleapis.com/sj/v2.5/";
 static STREAM_URL: &str = "https://mclients.googleapis.com/music/mplay";
@@ -190,6 +192,29 @@ impl GoogleMusicApi {
         let track: Track = self.api_get(&url, Vec::new(), params)?.json()?;
 
         Ok(track)
+    }
+
+    pub fn get_album(&self, album_id: &str) -> Result<Album, Error> {
+        let params = vec![
+            ("alt", "json"),
+            ("nid", album_id),
+            ("include-tracks", "true")
+        ];
+        let url = format!("{}fetchalbum", BASE_URL);
+        let album: Album = self.api_get(&url, Vec::new(), params)?.json()?;
+
+        Ok(album)
+    }
+
+    pub fn get_artist(&self, artist_id: &str) -> Result<Artist, Error> {
+        let params = vec![
+            ("alt", "json"),
+            ("nid", artist_id)
+        ];
+        let url = format!("{}fetchartist", BASE_URL);
+        let artist: Artist = self.api_get(&url, Vec::new(), params)?.json()?;
+
+        Ok(artist)
     }
 
     /**

@@ -1,5 +1,7 @@
 use serde_derive::{Deserialize, Serialize};
 
+pub mod album;
+pub mod artist;
 pub mod all_playlists;
 pub mod all_tracks;
 pub mod device_management_info;
