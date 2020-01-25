@@ -4,30 +4,30 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use failure::{ensure, format_err, Error};
 use hmac::{Hmac, Mac};
 use oauth2::basic::BasicClient;
-use oauth2::{AuthUrl, ClientId, ClientSecret, RedirectUrl, TokenUrl};
+use oauth2::{AuthUrl, ClientId, ClientSecret, PkceCodeVerifier, RedirectUrl, TokenUrl};
 use reqwest::header::HeaderMap;
 use reqwest::{header::AUTHORIZATION, Method, RequestBuilder, Response, StatusCode};
 use sha1::Sha1;
 use url::Url;
 
-use crate::auth::perform_oauth;
+use crate::auth::{get_oauth_url, perform_oauth, request_token};
+use crate::models::album::Album;
 use crate::models::all_playlists::Playlist;
 use crate::models::all_playlists::{GetAllPlaylistsRequest, GetAllPlaylistsResponse};
 use crate::models::all_tracks::Track;
 use crate::models::all_tracks::{GetAllTracksRequest, GetAllTracksResponse};
+use crate::models::artist::Artist;
 use crate::models::device_management_info::{
     DeviceManagementInfo, GetDeviceManagementInfoResponse,
 };
-use crate::models::playlist_entries::{GetPlaylistEntriesResponse, GetPlaylistEntriesRequest};
 use crate::models::playlist_entries::PlaylistEntry;
-use crate::models::search_results::{SearchResultResponse, SearchResultCluster};
+use crate::models::playlist_entries::{GetPlaylistEntriesRequest, GetPlaylistEntriesResponse};
+use crate::models::search_results::{SearchResultCluster, SearchResultResponse};
 use crate::token::AuthToken;
-use crate::models::album::Album;
-use crate::models::artist::Artist;
 
 static BASE_URL: &str = "https://mclients.googleapis.com/sj/v2.5/";
 static STREAM_URL: &str = "https://mclients.googleapis.com/music/mplay";
-static REDIRECT_URI: &str = "urn:ietf:wg:oauth:2.0:oob";
+pub static CODE_REDIRECT_URI: &str = "urn:ietf:wg:oauth:2.0:oob";
 
 #[derive(Debug, Clone)]
 pub struct GoogleMusicApi {
@@ -44,7 +44,11 @@ pub(crate) struct GoogleMusicApiClient {
 }
 
 impl GoogleMusicApi {
-    pub fn new(client_id: String, client_secret: String) -> Result<GoogleMusicApi, Error> {
+    pub fn new(
+        client_id: String,
+        client_secret: String,
+        redirect_uri: Option<&str>,
+    ) -> Result<GoogleMusicApi, Error> {
         let oauth_client = BasicClient::new(
             ClientId::new(client_id.clone()),
             Some(ClientSecret::new(client_secret.clone())),
@@ -53,7 +57,9 @@ impl GoogleMusicApi {
                 "https://www.googleapis.com/oauth2/v3/token".to_string(),
             )?),
         )
-        .set_redirect_url(RedirectUrl::new(REDIRECT_URI.to_string())?);
+        .set_redirect_url(RedirectUrl::new(
+            redirect_uri.unwrap_or(CODE_REDIRECT_URI).to_string(),
+        )?);
 
         Ok(GoogleMusicApi {
             client: GoogleMusicApiClient {
@@ -88,6 +94,25 @@ impl GoogleMusicApi {
         let token = perform_oauth(&self.client.oauth_client, handler)?;
         self.auth_token.set_token(token);
         Ok(())
+    }
+
+    pub fn get_oauth_url(&self) -> (String, String) {
+        let (url, verifier) = get_oauth_url(&self.client.oauth_client);
+
+        (url, verifier.secret().clone())
+    }
+
+    pub fn request_token(&mut self, code: String, verifier: String) -> Result<(), Error> {
+        let verifier = PkceCodeVerifier::new(verifier);
+
+        let token = request_token(&self.client.oauth_client, code, verifier)?;
+        self.auth_token.set_token(token);
+
+        Ok(())
+    }
+
+    pub fn has_token(&self) -> bool {
+        self.auth_token.has_token()
     }
 
     /**
@@ -167,14 +192,18 @@ impl GoogleMusicApi {
         Ok(items)
     }
 
-    fn get_playlist_entries_page(&self, page: Option<String>) -> Result<GetPlaylistEntriesResponse, Error> {
+    fn get_playlist_entries_page(
+        &self,
+        page: Option<String>,
+    ) -> Result<GetPlaylistEntriesResponse, Error> {
         let url = format!("{}plentryfeed", BASE_URL);
         let request = GetPlaylistEntriesRequest {
             max_results: Some(String::from("20000")),
-            start_token: page
+            start_token: page,
         };
-        let mut res: GetPlaylistEntriesResponse =
-            self.api_post(&url, &request, Vec::new(), Vec::new())?.json()?;
+        let mut res: GetPlaylistEntriesResponse = self
+            .api_post(&url, &request, Vec::new(), Vec::new())?
+            .json()?;
 
         for entry in &mut res.data.items {
             if let Some(mut track) = entry.track.as_mut() {
@@ -198,7 +227,7 @@ impl GoogleMusicApi {
         let params = vec![
             ("alt", "json"),
             ("nid", album_id),
-            ("include-tracks", "true")
+            ("include-tracks", "true"),
         ];
         let url = format!("{}fetchalbum", BASE_URL);
         let album: Album = self.api_get(&url, Vec::new(), params)?.json()?;
@@ -207,10 +236,7 @@ impl GoogleMusicApi {
     }
 
     pub fn get_artist(&self, artist_id: &str) -> Result<Artist, Error> {
-        let params = vec![
-            ("alt", "json"),
-            ("nid", artist_id)
-        ];
+        let params = vec![("alt", "json"), ("nid", artist_id)];
         let url = format!("{}fetchartist", BASE_URL);
         let artist: Artist = self.api_get(&url, Vec::new(), params)?.json()?;
 
@@ -233,7 +259,7 @@ impl GoogleMusicApi {
         ];
         if id.starts_with("T") {
             params.push(("mjck", id));
-        }else {
+        } else {
             params.push(("songid", id));
         }
         let headers = vec![("X-Device-ID", device_id)];
@@ -262,7 +288,11 @@ impl GoogleMusicApi {
         Ok((signature, salt.to_string()))
     }
 
-    pub fn search(&self, query: &str, max_results: Option<u64>) -> Result<Vec<SearchResultCluster>, Error> {
+    pub fn search(
+        &self,
+        query: &str,
+        max_results: Option<u64>,
+    ) -> Result<Vec<SearchResultCluster>, Error> {
         let url = format!("{}query", BASE_URL);
         let max_results = max_results.unwrap_or(50);
         let max_results = format!("{}", max_results);
@@ -270,10 +300,9 @@ impl GoogleMusicApi {
             ("ct", "1,2,3,4,5,6,7,8,9"),
             ("ic", "true"),
             ("q", query),
-            ("max-results", &max_results)
+            ("max-results", &max_results),
         ];
-        let res: SearchResultResponse = self.api_get(&url, Vec::new(), params)?
-            .json()?;
+        let res: SearchResultResponse = self.api_get(&url, Vec::new(), params)?.json()?;
 
         Ok(res.cluster_detail)
     }

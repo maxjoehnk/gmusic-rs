@@ -3,7 +3,7 @@ use std::io;
 use failure::Error;
 use oauth2::basic::{BasicClient, BasicTokenResponse};
 use oauth2::reqwest::http_client;
-use oauth2::{AuthorizationCode, CsrfToken, PkceCodeChallenge, Scope};
+use oauth2::{AuthorizationCode, CsrfToken, PkceCodeChallenge, PkceCodeVerifier, Scope};
 
 static SCOPE: &str = "https://www.googleapis.com/auth/skyjam";
 
@@ -19,13 +19,8 @@ pub fn stdio_login(url: String) -> String {
     code
 }
 
-pub(crate) fn perform_oauth<H>(
-    client: &BasicClient,
-    handler: H,
-) -> Result<BasicTokenResponse, Error>
-where
-    H: Fn(String) -> String,
-{
+// TODO: When url crate version matches we should return the url type
+pub(crate) fn get_oauth_url(client: &BasicClient) -> (String, PkceCodeVerifier) {
     let (pkce_code_challenge, pkce_code_verifier) = PkceCodeChallenge::new_random_sha256();
 
     let (authorize_url, _) = client
@@ -34,13 +29,34 @@ where
         .set_pkce_challenge(pkce_code_challenge)
         .url();
 
-    let code = handler(authorize_url.to_string());
+    (authorize_url.to_string(), pkce_code_verifier)
+}
+
+pub(crate) fn request_token(
+    client: &BasicClient,
+    code: String,
+    verifier: PkceCodeVerifier,
+) -> Result<BasicTokenResponse, Error> {
     let code = AuthorizationCode::new(code);
 
     let token = client
         .exchange_code(code)
-        .set_pkce_verifier(pkce_code_verifier)
+        .set_pkce_verifier(verifier)
         .request(http_client)?;
 
     Ok(token)
+}
+
+pub(crate) fn perform_oauth<H>(
+    client: &BasicClient,
+    handler: H,
+) -> Result<BasicTokenResponse, Error>
+where
+    H: Fn(String) -> String,
+{
+    let (authorize_url, pkce_code_verifier) = get_oauth_url(client);
+
+    let code = handler(authorize_url);
+
+    request_token(client, code, pkce_code_verifier)
 }
