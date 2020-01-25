@@ -283,7 +283,8 @@ impl GoogleMusicApi {
         mac.input(id.as_bytes());
         mac.input(salt.as_bytes());
 
-        let signature = base64::encode(&mac.result().code());
+        // substitution happens to fix url encoding
+        let signature = base64::encode(&mac.result().code()).replace("+", "-").replace("/", "_").replace("=", ".");
 
         Ok((signature, salt.to_string()))
     }
