@@ -76,8 +76,8 @@ impl AuthToken {
             let mut expired_at = self.expired_at.lock().unwrap();
             *expired_at = Instant::now()
                 + new_token
-                .expires_in()
-                .unwrap_or_else(|| Duration::new(0, 0));
+                    .expires_in()
+                    .unwrap_or_else(|| Duration::new(0, 0));
             self.has_token.store(true, Ordering::Relaxed);
         }
     }

@@ -1,14 +1,14 @@
-use crate::{Track, Playlist};
-use serde_derive::Deserialize;
-use crate::models::artist::Artist;
 use crate::models::album::Album;
+use crate::models::artist::Artist;
+use crate::{Playlist, Track};
+use serde_derive::Deserialize;
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct SearchResultResponse {
     pub kind: String,
     pub cluster_detail: Vec<SearchResultCluster>,
-    pub suggested_query: Option<String>
+    pub suggested_query: Option<String>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -18,7 +18,7 @@ pub struct SearchResultCluster {
     pub display_name: Option<String>,
     #[serde(default)]
     pub entries: Vec<SearchResult>,
-    pub result_token: Option<String>
+    pub result_token: Option<String>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -27,7 +27,7 @@ pub struct SearchResultClusterInfo {
     pub category: String,
     pub id: String,
     #[serde(rename = "type")]
-    pub cluster_type: String
+    pub cluster_type: String,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -42,5 +42,5 @@ pub struct SearchResult {
     pub track: Option<Track>,
     pub playlist: Option<Playlist>,
     pub artist: Option<Artist>,
-    pub album: Option<Album>
+    pub album: Option<Album>,
 }

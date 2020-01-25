@@ -26,5 +26,5 @@ pub struct PlaylistEntry {
 #[serde(rename_all = "kebab-case")]
 pub struct GetPlaylistEntriesRequest {
     pub start_token: Option<String>,
-    pub max_results: Option<String>
+    pub max_results: Option<String>,
 }

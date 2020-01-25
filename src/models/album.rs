@@ -17,5 +17,5 @@ pub struct Album {
     pub tracks: Vec<Track>,
     pub description: Option<String>,
     pub explicit_type: String,
-    pub content_type: Option<String>
+    pub content_type: Option<String>,
 }

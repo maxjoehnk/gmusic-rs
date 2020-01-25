@@ -27,7 +27,7 @@ pub struct Track {
     #[serde(default)]
     pub artist_art_ref: Vec<ImageRef>,
     pub disk_number: Option<u64>,
-    pub store_id: Option<String>
+    pub store_id: Option<String>,
 }
 
 impl GetAllTracksRequest {
