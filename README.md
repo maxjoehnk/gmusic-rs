@@ -11,7 +11,7 @@ Port of [gmusicapi](https://github.com/simon-weber/gmusicapi).
 Add the following to your Cargo.toml file.
 ```toml
 [dependencies]
-gmusic = "0.1"
+gmusic = "0.3"
 ```
 
 Generate a client id and client secret.
