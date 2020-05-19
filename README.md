@@ -19,11 +19,12 @@ Generate a client id and client secret.
 ```rust
 use gmusic::{GoogleMusicApi, auth::stdio_login};
 
-fn main() {
-    let api = GoogleMusicApi::new(client_id, client_secret)?;
+#[tokio::main]
+async fn main() {
+    let api = GoogleMusicApi::new(client_id, client_secret, None)?;
 
-    api.login(stdio_login)?;
+    api.login(stdio_login).await?;
 
-    let tracks = api.get_all_tracks()?;
+    let tracks = api.get_all_tracks().await?;
 }
 ```

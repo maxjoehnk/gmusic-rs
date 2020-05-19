@@ -1,7 +1,7 @@
 use crate::models::album::Album;
 use crate::models::artist::Artist;
 use crate::{Playlist, Track};
-use serde_derive::Deserialize;
+use serde::Deserialize;
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]

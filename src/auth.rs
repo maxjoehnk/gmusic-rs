@@ -2,8 +2,10 @@ use std::io;
 
 use failure::Error;
 use oauth2::basic::{BasicClient, BasicTokenResponse};
-use oauth2::reqwest::http_client;
-use oauth2::{AuthorizationCode, CsrfToken, PkceCodeChallenge, PkceCodeVerifier, Scope};
+use oauth2::reqwest::async_http_client;
+use oauth2::{
+    AsyncCodeTokenRequest, AuthorizationCode, CsrfToken, PkceCodeChallenge, PkceCodeVerifier, Scope,
+};
 
 static SCOPE: &str = "https://www.googleapis.com/auth/skyjam";
 
@@ -32,7 +34,7 @@ pub(crate) fn get_oauth_url(client: &BasicClient) -> (String, PkceCodeVerifier) 
     (authorize_url.to_string(), pkce_code_verifier)
 }
 
-pub(crate) fn request_token(
+pub(crate) async fn request_token(
     client: &BasicClient,
     code: String,
     verifier: PkceCodeVerifier,
@@ -42,12 +44,13 @@ pub(crate) fn request_token(
     let token = client
         .exchange_code(code)
         .set_pkce_verifier(verifier)
-        .request(http_client)?;
+        .request_async(async_http_client)
+        .await?;
 
     Ok(token)
 }
 
-pub(crate) fn perform_oauth<H>(
+pub(crate) async fn perform_oauth<H>(
     client: &BasicClient,
     handler: H,
 ) -> Result<BasicTokenResponse, Error>
@@ -58,5 +61,5 @@ where
 
     let code = handler(authorize_url);
 
-    request_token(client, code, pkce_code_verifier)
+    request_token(client, code, pkce_code_verifier).await
 }

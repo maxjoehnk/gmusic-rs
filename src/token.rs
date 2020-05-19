@@ -5,8 +5,8 @@ use std::time::{Duration, Instant};
 use failure::{format_err, Error};
 use log::debug;
 use oauth2::basic::{BasicClient, BasicTokenResponse};
-use oauth2::reqwest::http_client;
-use oauth2::TokenResponse;
+use oauth2::reqwest::async_http_client;
+use oauth2::{AsyncRefreshTokenRequest, TokenResponse};
 
 #[derive(Debug, Clone)]
 pub(crate) struct AuthToken {
@@ -49,7 +49,7 @@ impl AuthToken {
         self.has_token.load(Ordering::Relaxed)
     }
 
-    pub(crate) fn refresh(&self, client: &BasicClient) -> Result<(), Error> {
+    pub(crate) async fn refresh(&self, client: &BasicClient) -> Result<(), Error> {
         debug!("refreshing access token");
         let token = {
             let token = self.token.lock().unwrap();
@@ -61,7 +61,8 @@ impl AuthToken {
 
             client
                 .exchange_refresh_token(refresh_token)
-                .request(http_client)
+                .request_async(async_http_client)
+                .await
         }?;
 
         self.set_access_token(token);

@@ -1,7 +1,7 @@
 use crate::models::album::Album;
 use crate::models::image_ref::ImageRef;
 use crate::Track;
-use serde_derive::Deserialize;
+use serde::Deserialize;
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
