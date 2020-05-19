@@ -9,5 +9,5 @@ async fn main() {
     let api = GoogleMusicApi::new(client_id, client_secret, None).unwrap();
 
     api.login(stdio_login).await.unwrap();
-    api.store_token().unwrap();
+    api.store_token().await.unwrap();
 }

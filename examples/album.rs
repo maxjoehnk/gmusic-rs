@@ -7,7 +7,7 @@ async fn main() {
     let client_secret = std::env::var("CLIENT_SECRET").expect("missing client secret");
 
     let api = GoogleMusicApi::new(client_id, client_secret, None).unwrap();
-    api.load_token().unwrap();
+    api.load_token().await.unwrap();
 
     let album = api.get_album("B2fhxqwa7avbghszalvxpkqooh4").await.unwrap();
     println!("{:#?}", album);
