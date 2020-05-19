@@ -1,4 +1,4 @@
-use std::fs::{read_to_string, write};
+use tokio::fs::{read_to_string, write};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use failure::{ensure, format_err, Error};
@@ -112,7 +112,7 @@ impl GoogleMusicApi {
         H: Fn(String) -> String,
     {
         let token = perform_oauth(&self.client.oauth_client, handler).await?;
-        self.auth_token.set_token(token);
+        self.auth_token.set_token(token).await;
         Ok(())
     }
 
@@ -126,7 +126,7 @@ impl GoogleMusicApi {
         let verifier = PkceCodeVerifier::new(verifier);
 
         let token = request_token(&self.client.oauth_client, code, verifier).await?;
-        self.auth_token.set_token(token);
+        self.auth_token.set_token(token).await;
 
         Ok(())
     }
@@ -138,20 +138,20 @@ impl GoogleMusicApi {
     /**
      * Stores the auth and refresh token in a `.google-auth.json` file for login without user input.
      */
-    pub fn store_token(&self) -> Result<(), Error> {
+    pub async fn store_token(&self) -> Result<(), Error> {
         ensure!(self.auth_token.has_token(), "No token available to persist");
-        let token = serde_json::to_string(&self.auth_token.get_token()?)?;
-        write(".google-auth.json", token)?; // TODO: configure file path
+        let token = serde_json::to_string(&self.auth_token.get_token().await?)?;
+        write(".google-auth.json", token).await?; // TODO: configure file path
         Ok(())
     }
 
     /**
      * Stores the auth and refresh token from a `.google-auth.json` file for login without user input.
      */
-    pub fn load_token(&self) -> Result<(), Error> {
-        let token = read_to_string(".google-auth.json")?;
+    pub async fn load_token(&self) -> Result<(), Error> {
+        let token = read_to_string(".google-auth.json").await?;
         let token = serde_json::from_str(&token)?;
-        self.auth_token.set_token(token);
+        self.auth_token.set_token(token).await;
         Ok(())
     }
 
@@ -392,7 +392,7 @@ impl GoogleMusicApi {
     where
         B: serde::Serialize,
     {
-        if self.auth_token.requires_new_token() {
+        if self.auth_token.requires_new_token().await {
             self.auth_token.refresh(&self.client.oauth_client).await?;
         }
         let client = reqwest::Client::new();
@@ -418,7 +418,7 @@ impl GoogleMusicApi {
         let res = req
             .try_clone()
             .unwrap()
-            .header(AUTHORIZATION, self.auth_token.get_auth_header()?)
+            .header(AUTHORIZATION, self.auth_token.get_auth_header().await?)
             .send()
             .await?
             .error_for_status();
@@ -438,7 +438,7 @@ impl GoogleMusicApi {
         if let Some(StatusCode::UNAUTHORIZED) = err.status() {
             self.auth_token.refresh(&self.client.oauth_client).await?;
             let res = req
-                .header(AUTHORIZATION, self.auth_token.get_auth_header()?)
+                .header(AUTHORIZATION, self.auth_token.get_auth_header().await?)
                 .send()
                 .await?
                 .error_for_status()?;

@@ -1,5 +1,6 @@
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use tokio::sync::Mutex;
 use std::time::{Duration, Instant};
 
 use failure::{format_err, Error};
@@ -24,9 +25,9 @@ impl AuthToken {
         }
     }
 
-    pub(crate) fn set_token(&self, new_token: BasicTokenResponse) {
-        let mut token = self.token.lock().unwrap();
-        let mut expired_at = self.expired_at.lock().unwrap();
+    pub(crate) async fn set_token(&self, new_token: BasicTokenResponse) {
+        let mut token = self.token.lock().await;
+        let mut expired_at = self.expired_at.lock().await;
         *expired_at = Instant::now()
             + new_token
                 .expires_in()
@@ -35,11 +36,11 @@ impl AuthToken {
         self.has_token.store(true, Ordering::Relaxed);
     }
 
-    pub(crate) fn get_token(&self) -> Result<BasicTokenResponse, Error> {
+    pub(crate) async fn get_token(&self) -> Result<BasicTokenResponse, Error> {
         Ok(self
             .token
             .lock()
-            .unwrap()
+            .await
             .as_ref()
             .ok_or_else(|| format_err!("Not logged in"))?
             .clone())
@@ -52,7 +53,7 @@ impl AuthToken {
     pub(crate) async fn refresh(&self, client: &BasicClient) -> Result<(), Error> {
         debug!("refreshing access token");
         let token = {
-            let token = self.token.lock().unwrap();
+            let token = self.token.lock().await;
             let refresh_token = token
                 .as_ref()
                 .ok_or_else(|| format_err!("Not logged in"))?
@@ -65,16 +66,16 @@ impl AuthToken {
                 .await
         }?;
 
-        self.set_access_token(token);
+        self.set_access_token(token).await;
 
         Ok(())
     }
 
-    fn set_access_token(&self, new_token: BasicTokenResponse) {
-        let mut token = self.token.lock().unwrap();
+    async fn set_access_token(&self, new_token: BasicTokenResponse) {
+        let mut token = self.token.lock().await;
         if let Some(token) = token.as_mut() {
             token.set_access_token(new_token.access_token().clone());
-            let mut expired_at = self.expired_at.lock().unwrap();
+            let mut expired_at = self.expired_at.lock().await;
             *expired_at = Instant::now()
                 + new_token
                     .expires_in()
@@ -83,8 +84,8 @@ impl AuthToken {
         }
     }
 
-    pub(crate) fn get_auth_header(&self) -> Result<String, Error> {
-        let token = self.token.lock().unwrap();
+    pub(crate) async fn get_auth_header(&self) -> Result<String, Error> {
+        let token = self.token.lock().await;
         let token = token
             .as_ref()
             .ok_or_else(|| format_err!("Not logged in"))?
@@ -93,12 +94,12 @@ impl AuthToken {
         Ok(format!("Bearer {}", token))
     }
 
-    pub(crate) fn requires_new_token(&self) -> bool {
+    pub(crate) async fn requires_new_token(&self) -> bool {
         let has_token = self.has_token.load(Ordering::Relaxed);
         if !has_token {
             true
         } else {
-            let expired = self.expired_at.lock().unwrap();
+            let expired = self.expired_at.lock().await;
             Instant::now().ge(&expired)
         }
     }
