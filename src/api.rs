@@ -276,7 +276,9 @@ impl GoogleMusicApi {
     pub async fn get_artist(&self, artist_id: &str) -> Result<Artist, Error> {
         let params = Headers::new()
             .append("alt", "json")
-            .append("nid", artist_id);
+            .append("nid", artist_id)
+            .append("include-albums", "true")
+            .append("num-top-tracks", "20");
         let url = format!("{}fetchartist", BASE_URL);
         let artist: Artist = self
             .api_get(url, Headers::new(), params)
