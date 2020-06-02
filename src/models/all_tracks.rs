@@ -35,7 +35,7 @@ pub struct Track {
     pub total_disc_count: Option<u64>,
     pub disc_number: Option<u64>,
     pub beats_per_minute: Option<u64>,
-    pub genre: String,
+    pub genre: Option<String>,
     #[serde(default)]
     pub play_count: u64
 }
