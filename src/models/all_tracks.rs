@@ -15,8 +15,9 @@ pub struct Track {
     pub id: String,
     pub title: String,
     pub artist: String,
+    #[serde(default)]
     pub artist_id: Vec<String>,
-    pub album_id: String,
+    pub album_id: Option<String>,
     pub album: String,
     #[serde(default)]
     pub album_artist: Option<String>,

@@ -12,7 +12,7 @@ async fn main() {
     let tracks = api.get_all_tracks().await.unwrap();
     let track = &tracks[0];
 
-    let device_id = std::env::var("DEVICE_ID").expect("missing device id");
+    let device_id = GoogleMusicApi::get_device_id_from_mac_address().unwrap().unwrap();
     let url = api.get_stream_url(&track.id, &device_id).await.unwrap();
     println!("{}", url);
 }

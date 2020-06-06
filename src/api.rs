@@ -453,4 +453,10 @@ impl GoogleMusicApi {
     fn default_params() -> Vec<(&'static str, &'static str)> {
         vec![("dv", "0"), ("hl", "en_US"), ("tier", "aa")]
     }
+
+    pub fn get_device_id_from_mac_address() -> Result<Option<String>, Error> {
+        let address = mac_address::get_mac_address()?;
+
+        Ok(address.map(|addr| addr.to_string().replace(":", "")))
+    }
 }
