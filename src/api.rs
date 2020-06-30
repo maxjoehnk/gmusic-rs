@@ -24,6 +24,7 @@ use crate::models::playlist_entries::PlaylistEntry;
 use crate::models::playlist_entries::{GetPlaylistEntriesRequest, GetPlaylistEntriesResponse};
 use crate::models::search_results::{SearchResultCluster, SearchResultResponse};
 use crate::token::AuthToken;
+use crate::models::shared_playlist_entries::{SharedPlaylistEntry, SharedPlaylistEntriesResponse, SharedPlaylistContentsRequest, SharedPlaylistContentsFilter};
 
 static BASE_URL: &str = "https://mclients.googleapis.com/sj/v2.5/";
 static STREAM_URL: &str = "https://mclients.googleapis.com/music/mplay";
@@ -243,6 +244,28 @@ impl GoogleMusicApi {
         }
 
         Ok(res)
+    }
+
+    pub async fn get_shared_playlist_contents(&self, share_token: &str) -> Result<Vec<SharedPlaylistEntry>, Error> {
+        let url = format!("{}plentries/shared", BASE_URL);
+        let request = SharedPlaylistContentsRequest {
+            entries: vec![SharedPlaylistContentsFilter {
+                share_token: share_token.into(),
+                pages: GetPlaylistEntriesRequest {
+                    max_results: Some(String::from("200")),
+                    start_token: None
+                }
+            }],
+        };
+        let mut res: SharedPlaylistEntriesResponse = self
+            .api_post(url, &request, Headers::new(), Headers::new())
+            .await?
+            .json()
+            .await?;
+
+        let entry = res.entries.remove(0);
+
+        Ok(entry.playlist_entry)
     }
 
     pub async fn get_store_track(&self, track_id: &str) -> Result<Track, Error> {
