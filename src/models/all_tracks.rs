@@ -38,7 +38,18 @@ pub struct Track {
     pub beats_per_minute: Option<u64>,
     pub genre: Option<String>,
     #[serde(default)]
-    pub play_count: u64
+    pub play_count: u64,
+    pub rating: Option<TrackRating>
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, Copy)]
+pub enum TrackRating {
+    #[serde(rename = "0")]
+    None,
+    #[serde(rename = "5")]
+    Like,
+    #[serde(rename = "1")]
+    Dislike
 }
 
 impl GetAllTracksRequest {
