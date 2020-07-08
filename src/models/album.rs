@@ -16,6 +16,9 @@ pub struct Album {
     #[serde(default)]
     pub tracks: Vec<Track>,
     pub description: Option<String>,
+    // TODO: map to bool
+    /// '1' == true
+    /// '2' == false
     pub explicit_type: String,
     pub content_type: Option<String>,
 }
